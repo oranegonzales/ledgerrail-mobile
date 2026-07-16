@@ -1,6 +1,7 @@
 # LedgerRail Mobile
 
 [![CI](https://github.com/oranegonzales/ledgerrail-mobile/actions/workflows/ci.yml/badge.svg)](https://github.com/oranegonzales/ledgerrail-mobile/actions/workflows/ci.yml)
+[![Security](https://github.com/oranegonzales/ledgerrail-mobile/actions/workflows/security.yml/badge.svg)](https://github.com/oranegonzales/ledgerrail-mobile/actions/workflows/security.yml)
 
 LedgerRail Mobile is a native Kotlin and Jetpack Compose client for the [LedgerRail Core](https://github.com/oranegonzales/ledgerrail-core) payment-reliability sandbox. It demonstrates an Android client consuming a real Java/PostgreSQL API while preserving exact decimal values and safe retry semantics.
 
@@ -18,7 +19,9 @@ This is a portfolio sandbox. It never moves real money and must only use synthet
 - Inspection of the matching debit and credit ledger entries
 - An explicit replay control proving that retries do not duplicate a transfer
 - Zero-secret recruiter flow against the rate-limited synthetic API
-- JVM repository/ViewModel tests, a Compose UI test, lint, and GitHub Actions CI
+- Automatic cold-start connection to one fixed HTTPS backend with a bounded retry state
+- Cleartext and backup protection plus bounded client inputs and server error text
+- JVM repository/ViewModel tests, a Compose UI test, lint, release assembly, CodeQL, and dependency review
 
 ## Live system
 
@@ -34,8 +37,8 @@ The backend uses Render Free and Neon PostgreSQL. With the uptime monitor paused
 3. Allow the Gradle sync to finish. If prompted, install Android SDK 37 and accept the licenses.
 4. Open **Tools → Device Manager**, create a recent Pixel virtual device, and start it. A physical Android phone with USB debugging also works.
 5. Select the `app` run configuration and click the green **Run** triangle.
-6. Leave the pre-filled server URL as `https://ledgerrail-core.onrender.com/`.
-7. Tap **Connect and refresh**. No account or API key is needed. If Render is asleep, leave the app open while the first request wakes it.
+6. The app immediately connects to `https://ledgerrail-core.onrender.com/`; there is no server or API-key setup screen.
+7. If Render is asleep, leave the app open while the first request wakes it. A **Retry** action appears only if that connection fails.
 
 ## Exercise the reliability flow
 
@@ -50,10 +53,10 @@ The backend uses Render Free and Neon PostgreSQL. With the uptime monitor paused
 From PowerShell in this repository:
 
 ```powershell
-.\gradlew.bat testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest
+.\gradlew.bat testDebugUnitTest lintDebug assembleDebug assembleRelease assembleDebugAndroidTest
 ```
 
-The debug APK is generated at `app\build\outputs\apk\debug\app-debug.apk`. GitHub Actions runs the same checks on every pull request.
+The debug APK is generated at `app\build\outputs\apk\debug\app-debug.apk`. GitHub Actions runs the same checks on every pull request and also analyzes Java/Kotlin with CodeQL.
 
 ## Design notes
 

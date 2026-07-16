@@ -30,9 +30,9 @@ class LedgerRailViewModelTest {
         val repository = FakeRepository()
         val viewModel = LedgerRailViewModel(repository)
 
-        viewModel.connectAndRefresh()
         advanceUntilIdle()
 
+        assertEquals(1, repository.healthChecks)
         assertTrue(viewModel.uiState.value.isConnected)
         assertFalse(viewModel.uiState.value.isLoading)
         assertEquals(viewModel.uiState.value.accountId, repository.lastSession?.accountId.toString())
@@ -43,6 +43,7 @@ class LedgerRailViewModelTest {
     fun `replay preserves both idempotency key and original payload`() = runTest {
         val repository = FakeRepository()
         val viewModel = LedgerRailViewModel(repository)
+        advanceUntilIdle()
 
         viewModel.createTransfer()
         advanceUntilIdle()
@@ -62,26 +63,83 @@ class LedgerRailViewModelTest {
     }
 
     @Test
-    fun `changing connection settings disables replay`() = runTest {
+    fun `changing account disables replay without disconnecting the service`() = runTest {
         val repository = FakeRepository()
         val viewModel = LedgerRailViewModel(repository)
+        advanceUntilIdle()
         viewModel.createTransfer()
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.replayAvailable)
 
-        viewModel.onServerUrlChanged("https://example.com")
+        viewModel.onAccountIdChanged(UUID.randomUUID().toString())
 
         assertFalse(viewModel.uiState.value.replayAvailable)
-        assertFalse(viewModel.uiState.value.isConnected)
+        assertTrue(viewModel.uiState.value.isConnected)
     }
 
-    private class FakeRepository : LedgerRailRepository {
+    @Test
+    fun `failed automatic connection exposes a working retry`() = runTest {
+        val repository = FakeRepository(healthFailures = 1)
+        val viewModel = LedgerRailViewModel(repository)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isConnected)
+        assertTrue(viewModel.uiState.value.isError)
+
+        viewModel.connectAndRefresh()
+        advanceUntilIdle()
+
+        assertEquals(2, repository.healthChecks)
+        assertTrue(viewModel.uiState.value.isConnected)
+        assertFalse(viewModel.uiState.value.isError)
+    }
+
+    @Test
+    fun `connection failure during submission marks the service offline`() = runTest {
+        val repository = FakeRepository(createConnectionFailures = 1)
+        val viewModel = LedgerRailViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.createTransfer()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isConnected)
+        assertTrue(viewModel.uiState.value.isError)
+    }
+
+    @Test
+    fun `local validation failure does not mark the service offline`() = runTest {
+        val viewModel = LedgerRailViewModel(FakeRepository())
+        advanceUntilIdle()
+
+        viewModel.onAmountChanged("not-a-number")
+        viewModel.createTransfer()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isConnected)
+        assertTrue(viewModel.uiState.value.isError)
+    }
+
+    private class FakeRepository(
+        private var healthFailures: Int = 0,
+        private var createConnectionFailures: Int = 0,
+    ) : LedgerRailRepository {
         val createCalls = mutableListOf<Pair<String, NewTransfer>>()
         var lastSession: LedgerSession? = null
+        var healthChecks: Int = 0
         private val transfers = mutableListOf<Transfer>()
         private val transferId = UUID.fromString("e38b13fd-64a2-49ae-b441-6c02cb409836")
 
-        override suspend fun checkConnection(serverUrl: String) = Unit
+        override suspend fun checkConnection() {
+            healthChecks++
+            if (healthFailures > 0) {
+                healthFailures--
+                throw dev.oranegonzales.ledgerrail.mobile.domain.LedgerRailFailure(
+                    "Service unavailable",
+                    isConnectionFailure = true,
+                )
+            }
+        }
 
         override suspend fun transfers(session: LedgerSession): List<Transfer> {
             lastSession = session
@@ -93,6 +151,13 @@ class LedgerRailViewModelTest {
             idempotencyKey: String,
             request: NewTransfer,
         ): CreatedTransfer {
+            if (createConnectionFailures > 0) {
+                createConnectionFailures--
+                throw dev.oranegonzales.ledgerrail.mobile.domain.LedgerRailFailure(
+                    "Connection lost",
+                    isConnectionFailure = true,
+                )
+            }
             lastSession = session
             val replayed = createCalls.any { it.first == idempotencyKey }
             createCalls += idempotencyKey to request

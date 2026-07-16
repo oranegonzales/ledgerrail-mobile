@@ -6,7 +6,6 @@ import dev.oranegonzales.ledgerrail.mobile.domain.model.TransferType
 import java.util.UUID
 
 data class LedgerRailUiState(
-    val serverUrl: String = "https://ledgerrail-core.onrender.com/",
     val accountId: String = UUID.randomUUID().toString(),
     val transferType: TransferType = TransferType.PAY_IN,
     val amount: String = "125.50",
@@ -15,8 +14,8 @@ data class LedgerRailUiState(
     val selectedTransferId: UUID? = null,
     val ledgerEntries: List<LedgerEntry> = emptyList(),
     val isConnected: Boolean = false,
-    val isLoading: Boolean = false,
+    val isLoading: Boolean = true,
     val replayAvailable: Boolean = false,
-    val message: String = "Public demo ready. No account or API key required.",
+    val message: String = "Connecting to the secure LedgerRail demo…",
     val isError: Boolean = false,
 )

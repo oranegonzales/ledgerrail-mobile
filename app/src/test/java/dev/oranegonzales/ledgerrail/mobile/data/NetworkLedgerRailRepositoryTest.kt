@@ -29,7 +29,7 @@ class NetworkLedgerRailRepositoryTest {
     fun setUp() {
         server = MockWebServer()
         server.start(InetAddress.getByName("127.0.0.1"), 0)
-        repository = NetworkLedgerRailRepository(ApiClientFactory())
+        repository = NetworkLedgerRailRepository(ApiClientFactory().create(serverUrl()))
     }
 
     @After
@@ -41,7 +41,7 @@ class NetworkLedgerRailRepositoryTest {
     fun `health check accepts an up service`() = runTest {
         server.enqueue(jsonResponse("""{"status":"UP"}"""))
 
-        repository.checkConnection(serverUrl())
+        repository.checkConnection()
 
         assertEquals("/actuator/health/liveness", server.takeRequest().path)
     }
@@ -106,8 +106,53 @@ class NetworkLedgerRailRepositoryTest {
         assertEquals("Key belongs to another payload", ledgerFailure.message)
     }
 
+    @Test
+    fun `redirect responses are not followed to another endpoint`() = runTest {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(302)
+                .setHeader("Location", server.url("/unexpected")),
+        )
+
+        val failure = runCatching { repository.checkConnection() }.exceptionOrNull()
+
+        assertTrue(failure is LedgerRailFailure)
+        assertTrue((failure as LedgerRailFailure).isConnectionFailure)
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test
+    fun `oversized error text is not retained or displayed`() = runTest {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(409)
+                .setHeader("Content-Type", "application/problem+json")
+                .setBody(
+                    """{"title":"Conflict","status":409,"detail":"${"x".repeat(5_000)}"}""",
+                ),
+        )
+
+        val failure = runCatching {
+            repository.createTransfer(
+                session = session(),
+                idempotencyKey = "bounded-error-key",
+                request = NewTransfer(
+                    accountId = accountId,
+                    type = TransferType.PAY_IN,
+                    amount = BigDecimal("1.00"),
+                    currency = "JMD",
+                ),
+            )
+        }.exceptionOrNull()
+
+        assertTrue(failure is LedgerRailFailure)
+        assertEquals(
+            "That idempotency key was used for a different request",
+            (failure as LedgerRailFailure).message,
+        )
+    }
+
     private fun session() = LedgerSession(
-        serverUrl = serverUrl(),
         accountId = accountId,
     )
 

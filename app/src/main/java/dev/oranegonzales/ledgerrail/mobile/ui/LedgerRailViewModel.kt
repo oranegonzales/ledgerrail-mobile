@@ -36,23 +36,19 @@ class LedgerRailViewModel(
     private var activeJob: Job? = null
     private var operationGeneration = 0L
 
-    fun onServerUrlChanged(value: String) {
-        clearSubmission()
-        updateConnectionField { copy(
-            serverUrl = value,
-            isConnected = false,
-        ) }
+    init {
+        connectAndRefresh()
     }
 
     fun onAccountIdChanged(value: String) {
         clearSubmission()
         _uiState.update {
             it.copy(
-                accountId = value,
+                accountId = value.take(36),
                 transfers = emptyList(),
                 selectedTransferId = null,
                 ledgerEntries = emptyList(),
-                message = "Connect to load this account.",
+                message = "Account changed. Create a transfer or refresh its activity.",
                 isError = false,
             )
         }
@@ -67,7 +63,7 @@ class LedgerRailViewModel(
     }
 
     fun onAmountChanged(value: String) {
-        _uiState.update { it.copy(amount = value) }
+        _uiState.update { it.copy(amount = value.take(20)) }
     }
 
     fun onCurrencyChanged(value: String) {
@@ -76,8 +72,8 @@ class LedgerRailViewModel(
 
     fun connectAndRefresh() = launchOperation {
         val session = currentSession()
-        _uiState.update { it.copy(message = "Waking and checking LedgerRail…") }
-        repository.checkConnection(session.serverUrl)
+        _uiState.update { it.copy(isConnected = false, message = "Waking and checking LedgerRail…") }
+        repository.checkConnection()
         val transfers = repository.transfers(session)
         _uiState.update {
             it.copy(
@@ -110,6 +106,9 @@ class LedgerRailViewModel(
 
     private fun submit(replay: Boolean) = launchOperation {
         val session = currentSession()
+        if (!_uiState.value.isConnected) {
+            throw LedgerRailFailure("Wait for LedgerRail to connect, or tap Retry")
+        }
         val submission = if (replay) {
             lastSubmission ?: throw LedgerRailFailure("Create a transfer before replaying a request")
         } else {
@@ -150,16 +149,12 @@ class LedgerRailViewModel(
 
     private fun currentSession(): LedgerSession {
         val state = _uiState.value
-        if (state.serverUrl.isBlank()) throw LedgerRailFailure("Enter the server URL")
         val accountId = try {
             UUID.fromString(state.accountId.trim())
         } catch (exception: IllegalArgumentException) {
             throw LedgerRailFailure("Enter a valid account UUID", cause = exception)
         }
-        return LedgerSession(
-            serverUrl = state.serverUrl,
-            accountId = accountId,
-        )
+        return LedgerSession(accountId = accountId)
     }
 
     private fun currentTransferRequest(accountId: UUID): NewTransfer {
@@ -171,6 +166,10 @@ class LedgerRailViewModel(
         }
         if (amount.scale() > 2) {
             throw LedgerRailFailure("Amount can have at most two decimal places")
+        }
+        val integerDigits = (amount.precision() - amount.scale()).coerceAtLeast(0)
+        if (integerDigits > 17) {
+            throw LedgerRailFailure("Amount can have at most 17 digits before the decimal point")
         }
         val currency = state.currency.trim().uppercase()
         if (!currency.matches(Regex("[A-Z]{3}"))) {
@@ -198,6 +197,13 @@ class LedgerRailViewModel(
                     it.copy(
                         message = exception.message ?: "LedgerRail could not complete the request",
                         isError = true,
+                        isConnected = if (
+                            exception is LedgerRailFailure && exception.isConnectionFailure
+                        ) {
+                            false
+                        } else {
+                            it.isConnected
+                        },
                     )
                 }
             } finally {
@@ -205,18 +211,6 @@ class LedgerRailViewModel(
                     _uiState.update { it.copy(isLoading = false) }
                 }
             }
-        }
-    }
-
-    private fun updateConnectionField(transform: LedgerRailUiState.() -> LedgerRailUiState) {
-        _uiState.update { current ->
-            current.transform().copy(
-                transfers = emptyList(),
-                selectedTransferId = null,
-                ledgerEntries = emptyList(),
-                message = "Connect to verify these settings.",
-                isError = false,
-            )
         }
     }
 

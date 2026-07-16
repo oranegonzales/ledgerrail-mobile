@@ -15,6 +15,7 @@ internal interface LedgerRailApi {
     @GET("api/v1/transfers")
     suspend fun transfers(
         @Query("accountId") accountId: String,
+        @Query("limit") limit: Int,
     ): Response<List<TransferDto>>
 
     @POST("api/v1/transfers")
