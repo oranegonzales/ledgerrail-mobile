@@ -9,6 +9,7 @@ import dev.oranegonzales.ledgerrail.mobile.domain.LedgerRailFailure
 import dev.oranegonzales.ledgerrail.mobile.domain.LedgerRailRepository
 import dev.oranegonzales.ledgerrail.mobile.domain.model.LedgerSession
 import dev.oranegonzales.ledgerrail.mobile.domain.model.NewTransfer
+import dev.oranegonzales.ledgerrail.mobile.domain.model.Transfer
 import dev.oranegonzales.ledgerrail.mobile.domain.model.TransferType
 import java.math.BigDecimal
 import java.util.UUID
@@ -87,12 +88,12 @@ class LedgerRailViewModel(
         }
     }
 
-    private suspend fun connectWithWakeRetries(session: LedgerSession) = run {
+    private suspend fun connectWithWakeRetries(session: LedgerSession): List<Transfer> {
         var attempt = 1
         while (true) {
             try {
                 repository.checkConnection()
-                return@run repository.transfers(session)
+                return repository.transfers(session)
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: LedgerRailFailure) {
