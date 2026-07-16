@@ -26,7 +26,6 @@ class MainActivity : ComponentActivity() {
                 LedgerRailApp(
                     state = state,
                     onServerUrlChanged = viewModel::onServerUrlChanged,
-                    onApiKeyChanged = viewModel::onApiKeyChanged,
                     onAccountIdChanged = viewModel::onAccountIdChanged,
                     onNewAccount = viewModel::newAccount,
                     onTransferTypeChanged = viewModel::onTransferTypeChanged,

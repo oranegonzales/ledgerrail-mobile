@@ -44,14 +44,6 @@ class LedgerRailViewModel(
         ) }
     }
 
-    fun onApiKeyChanged(value: String) {
-        clearSubmission()
-        updateConnectionField { copy(
-            apiKey = value,
-            isConnected = false,
-        ) }
-    }
-
     fun onAccountIdChanged(value: String) {
         clearSubmission()
         _uiState.update {
@@ -159,7 +151,6 @@ class LedgerRailViewModel(
     private fun currentSession(): LedgerSession {
         val state = _uiState.value
         if (state.serverUrl.isBlank()) throw LedgerRailFailure("Enter the server URL")
-        if (state.apiKey.isBlank()) throw LedgerRailFailure("Enter the portfolio API key")
         val accountId = try {
             UUID.fromString(state.accountId.trim())
         } catch (exception: IllegalArgumentException) {
@@ -167,7 +158,6 @@ class LedgerRailViewModel(
         }
         return LedgerSession(
             serverUrl = state.serverUrl,
-            apiKey = state.apiKey,
             accountId = accountId,
         )
     }

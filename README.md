@@ -13,11 +13,11 @@ This is a portfolio sandbox. It never moves real money and must only use synthet
 - Unidirectional data flow with `ViewModel`, `StateFlow`, and immutable UI state
 - A repository boundary around Retrofit, OkHttp, and Moshi
 - Exact `BigDecimal` money serialization
-- API-key and idempotency headers
+- Public-demo access with idempotency headers and HTTP 429 handling
 - Creation and retrieval of simulated pay-ins and pay-outs
 - Inspection of the matching debit and credit ledger entries
 - An explicit replay control proving that retries do not duplicate a transfer
-- Runtime-only secret handling with no key in source or device storage
+- Zero-secret recruiter flow against the rate-limited synthetic API
 - JVM repository/ViewModel tests, a Compose UI test, lint, and GitHub Actions CI
 
 ## Live system
@@ -35,10 +35,7 @@ The backend uses Render Free and Neon PostgreSQL. With the uptime monitor paused
 4. Open **Tools → Device Manager**, create a recent Pixel virtual device, and start it. A physical Android phone with USB debugging also works.
 5. Select the `app` run configuration and click the green **Run** triangle.
 6. Leave the pre-filled server URL as `https://ledgerrail-core.onrender.com/`.
-7. In Render, open the LedgerRail service, go to **Environment**, reveal `PORTFOLIO_API_KEY`, and enter that value in the app. Do not use the Neon database password.
-8. Tap **Connect and refresh**. If Render is asleep, leave the app open while the first request wakes it.
-
-The key is intentionally not saved, so it must be entered again after the app process is closed.
+7. Tap **Connect and refresh**. No account or API key is needed. If Render is asleep, leave the app open while the first request wakes it.
 
 ## Exercise the reliability flow
 
@@ -60,7 +57,7 @@ The debug APK is generated at `app\build\outputs\apk\debug\app-debug.apk`. GitHu
 
 ## Design notes
 
-See [Architecture](docs/ARCHITECTURE.md) for the data flow, correctness decisions, secret-handling boundary, and free-hosting topology.
+See [Architecture](docs/ARCHITECTURE.md) for the data flow, correctness decisions, public-demo security boundary, and free-hosting topology.
 
 ## Technology
 
@@ -76,7 +73,7 @@ See [Architecture](docs/ARCHITECTURE.md) for the data flow, correctness decision
 
 ## Current limitations
 
-- The public sandbox has one manually entered portfolio key, not per-user authentication.
+- The anonymous API is only for synthetic portfolio data; it is rate-limited rather than user-authenticated.
 - The app is intentionally online-only; PostgreSQL remains the sole source of truth.
 - The Render Free service can sleep or restart.
 - A signed release APK and store distribution are later release steps; no signing secret belongs in this repository.

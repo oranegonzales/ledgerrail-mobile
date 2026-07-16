@@ -7,7 +7,7 @@ flowchart TD
     Screen[Compose screen] -->|Events| ViewModel[StateFlow ViewModel]
     ViewModel -->|Domain operations| Repository[Repository contract]
     Repository --> Client[Retrofit + OkHttp + Moshi]
-    Client -->|HTTPS + API key| Core[LedgerRail Core on Render]
+    Client -->|Anonymous HTTPS| Core[LedgerRail Core on Render]
     Core --> Database[(Neon PostgreSQL)]
 ```
 
@@ -28,15 +28,15 @@ The repository boundary makes ViewModel tests deterministic and leaves room for 
 - Monetary values use `BigDecimal`; neither the API layer nor UI converts them to floating point.
 - A fresh idempotency key is created for each new submission.
 - “Replay exact request” intentionally reuses both the prior key and prior payload, demonstrating safe retry behavior.
-- Changing the server, key, or account invalidates the replay context.
+- Changing the server or account invalidates the replay context.
 - Starting a new operation cancels the previous UI job to prevent stale results from overwriting newer state.
 - The HTTP client allows HTTPS only, except localhost HTTP used by JVM integration tests.
 
 ## Security boundary
 
-The portfolio API key is entered at runtime, masked by default, retained only in the ViewModel's process memory, and never stored in source, Gradle configuration, logs, preferences, or device backups. Process death clears it.
+The app contains and requests no secret. It calls only LedgerRail Core's anonymous synthetic-transfer endpoints. The backend enforces a per-client minute limit and a PostgreSQL-backed daily write quota; private reconciliation and failed-event replay endpoints are not exposed by the app.
 
-This global key is appropriate only as abuse control for a synthetic public demo. A real payment application would place user authentication and authorization in front of the API, use short-lived tokens, bind access to accounts, protect tokens with platform-backed storage, and apply device and risk controls.
+This is appropriate only for a portfolio sandbox containing no real money or personal data. A real payment application would place user authentication and authorization in front of the API, use short-lived tokens, bind access to accounts, protect tokens with platform-backed storage, and apply device and risk controls.
 
 ## Free-hosting topology
 

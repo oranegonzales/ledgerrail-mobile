@@ -33,18 +33,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.oranegonzales.ledgerrail.mobile.R
@@ -64,7 +58,6 @@ private val CardShape = RoundedCornerShape(24.dp)
 fun LedgerRailApp(
     state: LedgerRailUiState,
     onServerUrlChanged: (String) -> Unit,
-    onApiKeyChanged: (String) -> Unit,
     onAccountIdChanged: (String) -> Unit,
     onNewAccount: () -> Unit,
     onTransferTypeChanged: (TransferType) -> Unit,
@@ -110,7 +103,6 @@ fun LedgerRailApp(
                     WideContent(
                         state = state,
                         onServerUrlChanged = onServerUrlChanged,
-                        onApiKeyChanged = onApiKeyChanged,
                         onAccountIdChanged = onAccountIdChanged,
                         onNewAccount = onNewAccount,
                         onTransferTypeChanged = onTransferTypeChanged,
@@ -125,7 +117,6 @@ fun LedgerRailApp(
                     CompactContent(
                         state = state,
                         onServerUrlChanged = onServerUrlChanged,
-                        onApiKeyChanged = onApiKeyChanged,
                         onAccountIdChanged = onAccountIdChanged,
                         onNewAccount = onNewAccount,
                         onTransferTypeChanged = onTransferTypeChanged,
@@ -146,7 +137,6 @@ fun LedgerRailApp(
 private fun WideContent(
     state: LedgerRailUiState,
     onServerUrlChanged: (String) -> Unit,
-    onApiKeyChanged: (String) -> Unit,
     onAccountIdChanged: (String) -> Unit,
     onNewAccount: () -> Unit,
     onTransferTypeChanged: (TransferType) -> Unit,
@@ -169,7 +159,7 @@ private fun WideContent(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item { SandboxLabel() }
-            item { ConnectionCard(state, onServerUrlChanged, onApiKeyChanged, onConnect) }
+            item { ConnectionCard(state, onServerUrlChanged, onConnect) }
             item {
                 TransferFormCard(
                     state,
@@ -199,7 +189,6 @@ private fun WideContent(
 private fun CompactContent(
     state: LedgerRailUiState,
     onServerUrlChanged: (String) -> Unit,
-    onApiKeyChanged: (String) -> Unit,
     onAccountIdChanged: (String) -> Unit,
     onNewAccount: () -> Unit,
     onTransferTypeChanged: (TransferType) -> Unit,
@@ -216,7 +205,7 @@ private fun CompactContent(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item { SandboxLabel() }
-        item { ConnectionCard(state, onServerUrlChanged, onApiKeyChanged, onConnect) }
+        item { ConnectionCard(state, onServerUrlChanged, onConnect) }
         item {
             TransferFormCard(
                 state,
@@ -314,10 +303,8 @@ private fun MessageBanner(state: LedgerRailUiState) {
 private fun ConnectionCard(
     state: LedgerRailUiState,
     onServerUrlChanged: (String) -> Unit,
-    onApiKeyChanged: (String) -> Unit,
     onConnect: () -> Unit,
 ) {
-    var revealKey by remember { mutableStateOf(false) }
     SectionCard {
         SectionTitle(stringResource(R.string.connection_title))
         Text(
@@ -333,23 +320,9 @@ private fun ConnectionCard(
             singleLine = true,
             enabled = !state.isLoading,
         )
-        OutlinedTextField(
-            value = state.apiKey,
-            onValueChange = onApiKeyChanged,
-            label = { Text(stringResource(R.string.portfolio_key)) },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            enabled = !state.isLoading,
-            visualTransformation = if (revealKey) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = {
-                TextButton(onClick = { revealKey = !revealKey }) {
-                    Text(stringResource(if (revealKey) R.string.hide_key else R.string.show_key))
-                }
-            },
-        )
         Button(
             onClick = onConnect,
-            enabled = !state.isLoading && state.apiKey.isNotBlank(),
+            enabled = !state.isLoading,
             modifier = Modifier.fillMaxWidth(),
         ) {
             if (state.isLoading) {
@@ -427,7 +400,7 @@ private fun TransferFormCard(
         }
         Button(
             onClick = onCreate,
-            enabled = !state.isLoading && state.apiKey.isNotBlank(),
+            enabled = !state.isLoading,
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag("create-transfer"),
@@ -470,7 +443,7 @@ private fun ActivityHeader(state: LedgerRailUiState, onRefresh: () -> Unit) {
         }
         TextButton(
             onClick = onRefresh,
-            enabled = !state.isLoading && state.apiKey.isNotBlank(),
+            enabled = !state.isLoading,
         ) {
             Text(stringResource(R.string.refresh))
         }

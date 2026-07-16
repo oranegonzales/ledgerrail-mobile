@@ -29,14 +29,13 @@ class LedgerRailViewModelTest {
     fun `connect loads account activity and marks session connected`() = runTest {
         val repository = FakeRepository()
         val viewModel = LedgerRailViewModel(repository)
-        viewModel.onApiKeyChanged("portfolio-secret")
 
         viewModel.connectAndRefresh()
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.isConnected)
         assertFalse(viewModel.uiState.value.isLoading)
-        assertEquals("portfolio-secret", repository.lastSession?.apiKey)
+        assertEquals(viewModel.uiState.value.accountId, repository.lastSession?.accountId.toString())
         assertTrue(viewModel.uiState.value.message.startsWith("Connected."))
     }
 
@@ -44,7 +43,6 @@ class LedgerRailViewModelTest {
     fun `replay preserves both idempotency key and original payload`() = runTest {
         val repository = FakeRepository()
         val viewModel = LedgerRailViewModel(repository)
-        viewModel.onApiKeyChanged("portfolio-secret")
 
         viewModel.createTransfer()
         advanceUntilIdle()
@@ -67,7 +65,6 @@ class LedgerRailViewModelTest {
     fun `changing connection settings disables replay`() = runTest {
         val repository = FakeRepository()
         val viewModel = LedgerRailViewModel(repository)
-        viewModel.onApiKeyChanged("portfolio-secret")
         viewModel.createTransfer()
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.replayAvailable)

@@ -38,7 +38,7 @@ internal class ApiClientFactory {
             .addInterceptor { chain ->
                 val request: Request = chain.request().newBuilder()
                     .header("Accept", "application/json, application/problem+json")
-                    .header("User-Agent", "LedgerRail-Mobile/0.1")
+                    .header("User-Agent", "LedgerRail-Mobile/0.2")
                     .build()
                 chain.proceed(request)
             }

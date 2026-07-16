@@ -34,7 +34,7 @@ class NetworkLedgerRailRepository internal constructor(
 
     override suspend fun transfers(session: LedgerSession): List<Transfer> = withFailures {
         val client = clientFactory.client(session.serverUrl)
-        client.execute(client.api.transfers(session.apiKey, session.accountId.toString()))
+        client.execute(client.api.transfers(session.accountId.toString()))
             .map { it.toDomain() }
     }
 
@@ -44,7 +44,7 @@ class NetworkLedgerRailRepository internal constructor(
         request: NewTransfer,
     ): CreatedTransfer = withFailures {
         val client = clientFactory.client(session.serverUrl)
-        val response = client.api.createTransfer(session.apiKey, idempotencyKey, request.toDto())
+        val response = client.api.createTransfer(idempotencyKey, request.toDto())
         val transfer = client.execute(response).toDomain()
         CreatedTransfer(
             transfer = transfer,
@@ -57,7 +57,7 @@ class NetworkLedgerRailRepository internal constructor(
         transferId: UUID,
     ): List<LedgerEntry> = withFailures {
         val client = clientFactory.client(session.serverUrl)
-        client.execute(client.api.ledgerEntries(session.apiKey, transferId.toString()))
+        client.execute(client.api.ledgerEntries(transferId.toString()))
             .map { it.toDomain() }
     }
 
@@ -71,7 +71,8 @@ class NetworkLedgerRailRepository internal constructor(
             null
         }
         val message = when (response.code()) {
-            401 -> "The portfolio API key was rejected"
+            401 -> "This operation requires private operator access"
+            429 -> problem?.detail ?: "The public demo limit was reached. Try again later"
             409 -> problem?.detail ?: "That idempotency key was used for a different request"
             else -> problem?.detail ?: problem?.title ?: "LedgerRail returned HTTP ${response.code()}"
         }

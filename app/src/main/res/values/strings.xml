@@ -4,11 +4,8 @@
     <string name="app_tagline">Payment reliability, in your hand.</string>
     <string name="sandbox_label">SYNTHETIC DATA ONLY</string>
     <string name="connection_title">Connection</string>
-    <string name="connection_help">The free backend can need up to a minute to wake. Your key stays in memory and is never written to the app or device storage.</string>
+    <string name="connection_help">The public synthetic-data demo needs no account or API key. The free backend can take up to a minute to wake.</string>
     <string name="server_url">Server URL</string>
-    <string name="portfolio_key">Portfolio API key</string>
-    <string name="show_key">Show key</string>
-    <string name="hide_key">Hide key</string>
     <string name="connect_refresh">Connect and refresh</string>
     <string name="transfer_title">Create transfer</string>
     <string name="account_id">Synthetic account ID</string>

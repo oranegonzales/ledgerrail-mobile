@@ -29,7 +29,6 @@ private fun LedgerRailPhonePreview() {
         LedgerRailApp(
             state = previewState(),
             onServerUrlChanged = {},
-            onApiKeyChanged = {},
             onAccountIdChanged = {},
             onNewAccount = {},
             onTransferTypeChanged = {},
@@ -54,7 +53,6 @@ private fun previewState(): LedgerRailUiState {
         createdAt = "2026-07-14T22:21:43Z",
     )
     return LedgerRailUiState(
-        apiKey = "hidden-at-runtime",
         accountId = PreviewAccountId.toString(),
         transfers = listOf(transfer),
         selectedTransferId = PreviewTransferId,

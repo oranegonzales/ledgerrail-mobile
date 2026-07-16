@@ -12,6 +12,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -45,7 +46,7 @@ class NetworkLedgerRailRepositoryTest {
     }
 
     @Test
-    fun `create sends security and idempotency headers without changing the decimal`() = runTest {
+    fun `create uses public demo and preserves idempotency and decimal values`() = runTest {
         server.enqueue(
             jsonResponse(transferJson()).setHeader("Idempotency-Replayed", "true"),
         )
@@ -64,7 +65,7 @@ class NetworkLedgerRailRepositoryTest {
 
         val request = server.takeRequest()
         assertEquals("POST /api/v1/transfers HTTP/1.1", request.requestLine)
-        assertEquals("portfolio-secret", request.getHeader("X-Portfolio-Key"))
+        assertNull(request.getHeader("X-Portfolio-Key"))
         assertEquals("mobile-fixed-key", request.getHeader("Idempotency-Key"))
         val body = request.body.readUtf8()
         assertTrue(body.contains("\"accountId\":\"$accountId\""))
@@ -106,7 +107,6 @@ class NetworkLedgerRailRepositoryTest {
 
     private fun session() = LedgerSession(
         serverUrl = server.url("/").toString(),
-        apiKey = "portfolio-secret",
         accountId = accountId,
     )
 
