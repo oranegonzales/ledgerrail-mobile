@@ -6,6 +6,7 @@ import dev.oranegonzales.ledgerrail.mobile.domain.model.LedgerSession
 import dev.oranegonzales.ledgerrail.mobile.domain.model.NewTransfer
 import dev.oranegonzales.ledgerrail.mobile.domain.model.TransferType
 import java.math.BigDecimal
+import java.net.InetAddress
 import java.util.UUID
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
@@ -27,7 +28,7 @@ class NetworkLedgerRailRepositoryTest {
     @Before
     fun setUp() {
         server = MockWebServer()
-        server.start()
+        server.start(InetAddress.getByName("127.0.0.1"), 0)
         repository = NetworkLedgerRailRepository(ApiClientFactory())
     }
 
@@ -40,7 +41,7 @@ class NetworkLedgerRailRepositoryTest {
     fun `health check accepts an up service`() = runTest {
         server.enqueue(jsonResponse("""{"status":"UP"}"""))
 
-        repository.checkConnection(server.url("/").toString())
+        repository.checkConnection(serverUrl())
 
         assertEquals("/actuator/health/liveness", server.takeRequest().path)
     }
@@ -106,9 +107,11 @@ class NetworkLedgerRailRepositoryTest {
     }
 
     private fun session() = LedgerSession(
-        serverUrl = server.url("/").toString(),
+        serverUrl = serverUrl(),
         accountId = accountId,
     )
+
+    private fun serverUrl() = "http://127.0.0.1:${server.port}/"
 
     private fun transferJson() = """
         {
