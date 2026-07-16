@@ -36,7 +36,7 @@ jobs:
         run: ./gradlew testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest --stacktrace
 
       - name: Upload debug APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ledgerrail-mobile-debug
           path: app/build/outputs/apk/debug/app-debug.apk
