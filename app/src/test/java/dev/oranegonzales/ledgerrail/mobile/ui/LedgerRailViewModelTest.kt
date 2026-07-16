@@ -78,18 +78,30 @@ class LedgerRailViewModelTest {
     }
 
     @Test
-    fun `failed automatic connection exposes a working retry`() = runTest {
+    fun `transient cold start failure retries automatically`() = runTest {
         val repository = FakeRepository(healthFailures = 1)
         val viewModel = LedgerRailViewModel(repository)
         advanceUntilIdle()
 
+        assertEquals(2, repository.healthChecks)
+        assertTrue(viewModel.uiState.value.isConnected)
+        assertFalse(viewModel.uiState.value.isError)
+    }
+
+    @Test
+    fun `exhausted cold start retries expose a working manual retry`() = runTest {
+        val repository = FakeRepository(healthFailures = 3)
+        val viewModel = LedgerRailViewModel(repository)
+        advanceUntilIdle()
+
+        assertEquals(3, repository.healthChecks)
         assertFalse(viewModel.uiState.value.isConnected)
         assertTrue(viewModel.uiState.value.isError)
 
         viewModel.connectAndRefresh()
         advanceUntilIdle()
 
-        assertEquals(2, repository.healthChecks)
+        assertEquals(4, repository.healthChecks)
         assertTrue(viewModel.uiState.value.isConnected)
         assertFalse(viewModel.uiState.value.isError)
     }

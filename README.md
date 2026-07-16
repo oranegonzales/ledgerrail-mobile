@@ -38,7 +38,7 @@ The backend uses Render Free and Neon PostgreSQL. With the uptime monitor paused
 4. Open **Tools → Device Manager**, create a recent Pixel virtual device, and start it. A physical Android phone with USB debugging also works.
 5. Select the `app` run configuration and click the green **Run** triangle.
 6. The app immediately connects to `https://ledgerrail-core.onrender.com/`; there is no server or API-key setup screen.
-7. If Render is asleep, leave the app open while the first request wakes it. A **Retry** action appears only if that connection fails.
+7. If Render is asleep, leave the app open while it makes up to three bounded wake-up attempts. A **Retry** action appears only if all automatic attempts fail.
 
 ## Exercise the reliability flow
 
