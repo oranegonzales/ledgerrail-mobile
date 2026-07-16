@@ -1,11 +1,17 @@
 package dev.oranegonzales.ledgerrail.mobile.data.api
 
+import dev.oranegonzales.ledgerrail.mobile.BuildConfig
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class ApiClientFactoryTest {
     private val factory = ApiClientFactory()
+
+    @Test
+    fun `release client target is the fixed Render service`() {
+        assertEquals("https://ledgerrail-core.onrender.com/", BuildConfig.LEDGERRAIL_BASE_URL)
+    }
 
     @Test
     fun `normalization adds Retrofit's required trailing slash`() {

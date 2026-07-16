@@ -8,7 +8,7 @@ import dev.oranegonzales.ledgerrail.mobile.domain.model.Transfer
 import java.util.UUID
 
 interface LedgerRailRepository {
-    suspend fun checkConnection(serverUrl: String)
+    suspend fun checkConnection()
 
     suspend fun transfers(session: LedgerSession): List<Transfer>
 
@@ -25,4 +25,5 @@ class LedgerRailFailure(
     message: String,
     val statusCode: Int? = null,
     cause: Throwable? = null,
+    val isConnectionFailure: Boolean = false,
 ) : RuntimeException(message, cause)

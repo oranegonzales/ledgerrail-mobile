@@ -1,13 +1,13 @@
 # Architecture
 
-LedgerRail Mobile is a thin, native operator client for the LedgerRail Core sandbox. The backend remains the source of truth; the app never attempts to reproduce ledger rules locally.
+LedgerRail Mobile is a thin, native portfolio client for the LedgerRail Core sandbox. The backend remains the source of truth; the app never attempts to reproduce ledger rules locally.
 
 ```mermaid
 flowchart TD
     Screen[Compose screen] -->|Events| ViewModel[StateFlow ViewModel]
     ViewModel -->|Domain operations| Repository[Repository contract]
     Repository --> Client[Retrofit + OkHttp + Moshi]
-    Client -->|HTTPS + API key| Core[LedgerRail Core on Render]
+    Client -->|Anonymous HTTPS| Core[LedgerRail Core on Render]
     Core --> Database[(Neon PostgreSQL)]
 ```
 
@@ -15,11 +15,12 @@ flowchart TD
 
 The UI follows unidirectional data flow:
 
-1. `LedgerRailApp` renders one immutable `LedgerRailUiState`.
-2. User actions call methods on `LedgerRailViewModel`.
-3. The ViewModel validates domain input and calls `LedgerRailRepository`.
-4. The repository maps API DTOs to domain models and normalizes network failures.
-5. The ViewModel publishes a new state through `StateFlow`.
+1. `LedgerRailViewModel` starts the fixed-backend health check as soon as it is created.
+2. `LedgerRailApp` renders one immutable `LedgerRailUiState`.
+3. User actions call methods on `LedgerRailViewModel`.
+4. The ViewModel validates bounded domain input and calls `LedgerRailRepository`.
+5. The repository maps API DTOs to domain models and normalizes network failures.
+6. The ViewModel publishes a new state through `StateFlow`.
 
 The repository boundary makes ViewModel tests deterministic and leaves room for a future offline implementation without coupling Compose to Retrofit.
 
@@ -28,15 +29,15 @@ The repository boundary makes ViewModel tests deterministic and leaves room for 
 - Monetary values use `BigDecimal`; neither the API layer nor UI converts them to floating point.
 - A fresh idempotency key is created for each new submission.
 - “Replay exact request” intentionally reuses both the prior key and prior payload, demonstrating safe retry behavior.
-- Changing the server, key, or account invalidates the replay context.
+- Changing the synthetic account invalidates the replay context.
 - Starting a new operation cancels the previous UI job to prevent stale results from overwriting newer state.
-- The HTTP client allows HTTPS only, except localhost HTTP used by JVM integration tests.
+- The release client is constructed once with the fixed Render HTTPS endpoint; localhost HTTP is accepted only by JVM test construction.
 
 ## Security boundary
 
-The portfolio API key is entered at runtime, masked by default, retained only in the ViewModel's process memory, and never stored in source, Gradle configuration, logs, preferences, or device backups. Process death clears it.
+The app contains and requests no secret. It calls only LedgerRail Core's fixed anonymous synthetic-transfer endpoint. Cleartext traffic and Android backups are disabled, only system trust anchors are accepted, inputs and displayed server errors are bounded, and only the Internet permission is requested. The backend enforces a per-client minute limit and a PostgreSQL-backed daily write quota; private metrics, reconciliation, and failed-event replay endpoints are not exposed by the app.
 
-This global key is appropriate only as abuse control for a synthetic public demo. A real payment application would place user authentication and authorization in front of the API, use short-lived tokens, bind access to accounts, protect tokens with platform-backed storage, and apply device and risk controls.
+This is appropriate only for a portfolio sandbox containing no real money or personal data. A real payment application would place user authentication and authorization in front of the API, use short-lived tokens, bind access to accounts, protect tokens with platform-backed storage, and apply device and risk controls.
 
 ## Free-hosting topology
 

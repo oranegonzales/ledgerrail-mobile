@@ -14,20 +14,18 @@ internal interface LedgerRailApi {
 
     @GET("api/v1/transfers")
     suspend fun transfers(
-        @Header("X-Portfolio-Key") apiKey: String,
         @Query("accountId") accountId: String,
+        @Query("limit") limit: Int,
     ): Response<List<TransferDto>>
 
     @POST("api/v1/transfers")
     suspend fun createTransfer(
-        @Header("X-Portfolio-Key") apiKey: String,
         @Header("Idempotency-Key") idempotencyKey: String,
         @Body request: CreateTransferDto,
     ): Response<TransferDto>
 
     @GET("api/v1/transfers/{id}/ledger-entries")
     suspend fun ledgerEntries(
-        @Header("X-Portfolio-Key") apiKey: String,
         @Path("id") transferId: String,
     ): Response<List<LedgerEntryDto>>
 }

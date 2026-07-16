@@ -6,12 +6,14 @@ import dev.oranegonzales.ledgerrail.mobile.domain.model.LedgerSession
 import dev.oranegonzales.ledgerrail.mobile.domain.model.NewTransfer
 import dev.oranegonzales.ledgerrail.mobile.domain.model.TransferType
 import java.math.BigDecimal
+import java.net.InetAddress
 import java.util.UUID
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -26,8 +28,8 @@ class NetworkLedgerRailRepositoryTest {
     @Before
     fun setUp() {
         server = MockWebServer()
-        server.start()
-        repository = NetworkLedgerRailRepository(ApiClientFactory())
+        server.start(InetAddress.getByName("127.0.0.1"), 0)
+        repository = NetworkLedgerRailRepository(ApiClientFactory().create(serverUrl()))
     }
 
     @After
@@ -39,13 +41,13 @@ class NetworkLedgerRailRepositoryTest {
     fun `health check accepts an up service`() = runTest {
         server.enqueue(jsonResponse("""{"status":"UP"}"""))
 
-        repository.checkConnection(server.url("/").toString())
+        repository.checkConnection()
 
         assertEquals("/actuator/health/liveness", server.takeRequest().path)
     }
 
     @Test
-    fun `create sends security and idempotency headers without changing the decimal`() = runTest {
+    fun `create uses public demo and preserves idempotency and decimal values`() = runTest {
         server.enqueue(
             jsonResponse(transferJson()).setHeader("Idempotency-Replayed", "true"),
         )
@@ -64,7 +66,7 @@ class NetworkLedgerRailRepositoryTest {
 
         val request = server.takeRequest()
         assertEquals("POST /api/v1/transfers HTTP/1.1", request.requestLine)
-        assertEquals("portfolio-secret", request.getHeader("X-Portfolio-Key"))
+        assertNull(request.getHeader("X-Portfolio-Key"))
         assertEquals("mobile-fixed-key", request.getHeader("Idempotency-Key"))
         val body = request.body.readUtf8()
         assertTrue(body.contains("\"accountId\":\"$accountId\""))
@@ -104,11 +106,57 @@ class NetworkLedgerRailRepositoryTest {
         assertEquals("Key belongs to another payload", ledgerFailure.message)
     }
 
+    @Test
+    fun `redirect responses are not followed to another endpoint`() = runTest {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(302)
+                .setHeader("Location", server.url("/unexpected")),
+        )
+
+        val failure = runCatching { repository.checkConnection() }.exceptionOrNull()
+
+        assertTrue(failure is LedgerRailFailure)
+        assertTrue((failure as LedgerRailFailure).isConnectionFailure)
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test
+    fun `oversized error text is not retained or displayed`() = runTest {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(409)
+                .setHeader("Content-Type", "application/problem+json")
+                .setBody(
+                    """{"title":"Conflict","status":409,"detail":"${"x".repeat(5_000)}"}""",
+                ),
+        )
+
+        val failure = runCatching {
+            repository.createTransfer(
+                session = session(),
+                idempotencyKey = "bounded-error-key",
+                request = NewTransfer(
+                    accountId = accountId,
+                    type = TransferType.PAY_IN,
+                    amount = BigDecimal("1.00"),
+                    currency = "JMD",
+                ),
+            )
+        }.exceptionOrNull()
+
+        assertTrue(failure is LedgerRailFailure)
+        assertEquals(
+            "That idempotency key was used for a different request",
+            (failure as LedgerRailFailure).message,
+        )
+    }
+
     private fun session() = LedgerSession(
-        serverUrl = server.url("/").toString(),
-        apiKey = "portfolio-secret",
         accountId = accountId,
     )
+
+    private fun serverUrl() = "http://127.0.0.1:${server.port}/"
 
     private fun transferJson() = """
         {

@@ -4,8 +4,6 @@ import java.math.BigDecimal
 import java.util.UUID
 
 data class LedgerSession(
-    val serverUrl: String,
-    val apiKey: String,
     val accountId: UUID,
 )
 

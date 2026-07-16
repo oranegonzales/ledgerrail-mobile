@@ -3,8 +3,8 @@ package dev.oranegonzales.ledgerrail.mobile.data.api
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import dev.oranegonzales.ledgerrail.mobile.BuildConfig
 import java.net.URI
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -17,14 +17,8 @@ internal data class ApiClient(
 )
 
 internal class ApiClientFactory {
-    private val clients = ConcurrentHashMap<String, ApiClient>()
-
-    fun client(serverUrl: String): ApiClient {
+    fun create(serverUrl: String): ApiClient {
         val normalizedUrl = normalizeServerUrl(serverUrl)
-        return clients.getOrPut(normalizedUrl) { buildClient(normalizedUrl) }
-    }
-
-    private fun buildClient(serverUrl: String): ApiClient {
         val moshi = Moshi.Builder()
             .add(BigDecimalJsonAdapter)
             .add(UuidJsonAdapter)
@@ -35,16 +29,18 @@ internal class ApiClientFactory {
             .readTimeout(90, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .callTimeout(100, TimeUnit.SECONDS)
+            .followRedirects(false)
+            .followSslRedirects(false)
             .addInterceptor { chain ->
                 val request: Request = chain.request().newBuilder()
                     .header("Accept", "application/json, application/problem+json")
-                    .header("User-Agent", "LedgerRail-Mobile/0.1")
+                    .header("User-Agent", "LedgerRail-Mobile/${BuildConfig.VERSION_NAME}")
                     .build()
                 chain.proceed(request)
             }
             .build()
         val retrofit = Retrofit.Builder()
-            .baseUrl(serverUrl)
+            .baseUrl(normalizedUrl)
             .client(httpClient)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()

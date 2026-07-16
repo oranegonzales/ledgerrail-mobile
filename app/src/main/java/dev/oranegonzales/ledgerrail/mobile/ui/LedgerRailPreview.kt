@@ -28,8 +28,6 @@ private fun LedgerRailPhonePreview() {
     LedgerRailTheme {
         LedgerRailApp(
             state = previewState(),
-            onServerUrlChanged = {},
-            onApiKeyChanged = {},
             onAccountIdChanged = {},
             onNewAccount = {},
             onTransferTypeChanged = {},
@@ -54,7 +52,6 @@ private fun previewState(): LedgerRailUiState {
         createdAt = "2026-07-14T22:21:43Z",
     )
     return LedgerRailUiState(
-        apiKey = "hidden-at-runtime",
         accountId = PreviewAccountId.toString(),
         transfers = listOf(transfer),
         selectedTransferId = PreviewTransferId,
@@ -67,6 +64,7 @@ private fun previewState(): LedgerRailUiState {
             ),
         ),
         isConnected = true,
+        isLoading = false,
         replayAvailable = true,
         message = "Transfer completed and both ledger entries were recorded.",
     )
