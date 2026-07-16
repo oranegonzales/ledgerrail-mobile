@@ -14,6 +14,7 @@ import java.math.BigDecimal
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -73,8 +74,7 @@ class LedgerRailViewModel(
     fun connectAndRefresh() = launchOperation {
         val session = currentSession()
         _uiState.update { it.copy(isConnected = false, message = "Waking and checking LedgerRail…") }
-        repository.checkConnection()
-        val transfers = repository.transfers(session)
+        val transfers = connectWithWakeRetries(session)
         _uiState.update {
             it.copy(
                 transfers = transfers,
@@ -84,6 +84,32 @@ class LedgerRailViewModel(
                 message = "Connected. ${transfers.size} transfer${if (transfers.size == 1) "" else "s"} loaded.",
                 isError = false,
             )
+        }
+    }
+
+    private suspend fun connectWithWakeRetries(session: LedgerSession) = run {
+        var attempt = 1
+        while (true) {
+            try {
+                repository.checkConnection()
+                return@run repository.transfers(session)
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: LedgerRailFailure) {
+                if (!exception.isConnectionFailure || attempt >= MAX_WAKE_ATTEMPTS) {
+                    throw exception
+                }
+                val nextAttempt = attempt + 1
+                _uiState.update {
+                    it.copy(
+                        message = "The free demo is still waking. Retrying automatically " +
+                            "($nextAttempt/$MAX_WAKE_ATTEMPTS)…",
+                        isError = false,
+                    )
+                }
+                delay(WAKE_RETRY_DELAYS_MILLIS[attempt - 1])
+                attempt = nextAttempt
+            }
         }
     }
 
@@ -220,6 +246,9 @@ class LedgerRailViewModel(
     }
 
     companion object {
+        private const val MAX_WAKE_ATTEMPTS = 3
+        private val WAKE_RETRY_DELAYS_MILLIS = longArrayOf(2_000L, 5_000L)
+
         fun factory(repository: LedgerRailRepository): ViewModelProvider.Factory = viewModelFactory {
             initializer { LedgerRailViewModel(repository) }
         }
